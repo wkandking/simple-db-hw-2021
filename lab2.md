@@ -78,37 +78,24 @@ the test for the ant targets `test` and
 `systemtest`. Note the code only needs to pass the tests we indicate in this lab, not all of unit and system tests. See
 Section 3.4 for a complete discussion of grading and list of the tests you will need to pass.
 
-Here's a rough outline of one way you might proceed with your SimpleDB implementation; more details on the steps in this
-outline, including exercises, are given in Section 2 below.
+Here's a rough outline of one way you might proceed with your SimpleDB implementation; more details on the steps in this outline, including exercises, are given in Section 2 below.
 
-* Implement the operators `Filter` and `Join` and verify that their corresponding tests work. The Javadoc comments for
-  these operators contain details about how they should work. We have given you implementations of
-  `Project` and `OrderBy` which may help you understand how other operators work.
-
-* Implement `IntegerAggregator` and `StringAggregator`. Here, you will write the logic that actually computes an
-  aggregate over a particular field across multiple groups in a sequence of input tuples. Use integer division for
-  computing the average, since SimpleDB only supports integers. StringAggegator only needs to support the COUNT
-  aggregate, since the other operations do not make sense for strings.
-
-* Implement the `Aggregate` operator. As with other operators, aggregates implement the `OpIterator` interface so that
-  they can be placed in SimpleDB query plans. Note that the output of an `Aggregate` operator is an aggregate value of
-  an entire group for each call to `next()`, and that the aggregate constructor takes the aggregation and grouping
-  fields.
-
-* Implement the methods related to tuple insertion, deletion, and page eviction in `BufferPool`. You do not need to
-  worry about transactions at this point.
-
+* Implement the operators `Filter` and `Join` and verify that their corresponding tests work. The Javadoc comments for these operators contain details about how they should work. We have given you implementations of `Project` and `OrderBy` which may help you understand how other operators work.
+  
+* Implement `IntegerAggregator` and `StringAggregator`. Here, you will write the logic that actually computes an aggregate over a particular field across multiple groups in a sequence of input tuples. Use integer division for computing the average, since SimpleDB only supports integers. StringAggegator only needs to support the COUNT aggregate, since the other operations do not make sense for strings.
+  
+* Implement the `Aggregate` operator. As with other operators, aggregates implement the `OpIterator` interface so that they can be placed in SimpleDB query plans. Note that the output of an `Aggregate` operator is an aggregate value of an entire group for each call to `next()`, and that the aggregate constructor takes the aggregation and grouping fields.
+  
+* Implement the methods related to tuple insertion, deletion, and page eviction in `BufferPool`. You do not need to worry about transactions at this point.
+  
 * Implement the `Insert` and `Delete` operators. Like all operators,  `Insert` and `Delete` implement
   `OpIterator`, accepting a stream of tuples to insert or delete and outputting a single tuple with an integer field
-  that indicates the number of tuples inserted or deleted. These operators will need to call the appropriate methods
-  in `BufferPool` that actually modify the pages on disk. Check that the tests for inserting and deleting tuples work
-  properly.
+  that indicates the number of tuples inserted or deleted. These operators will need to call the appropriate methods in `BufferPool` that actually modify the pages on disk. Check that the tests for inserting and deleting tuples work properly.
 
 Note that SimpleDB does not implement any kind of consistency or integrity checking, so it is possible to insert
 duplicate records into a file and there is no way to enforce primary or foreign key constraints.
 
-At this point you should be able to pass the tests in the ant
-`systemtest` target, which is the goal of this lab.
+At this point you should be able to pass the tests in the ant `systemtest` target, which is the goal of this lab.
 
 You'll also be able to use the provided SQL parser to run SQL queries against your database!  See [Section 2.7](#parser)
 for a brief tutorial.
@@ -126,8 +113,7 @@ from iterator classes, and in its place put `implements OpIterator`.
 
 ### 2.1. Filter and Join
 
-Recall that SimpleDB OpIterator classes implement the operations of the relational algebra. You will now implement two
-operators that will enable you to perform queries that are slightly more interesting than a table scan.
+Recall that SimpleDB OpIterator classes implement the operations of the relational algebra. You will now implement two operators that will enable you to perform queries that are slightly more interesting than a table scan.
 
 * *Filter*: This operator only returns tuples that satisfy a `Predicate` that is specified as part of its constructor.
   Hence, it filters out any tuples that do not match the predicate.
@@ -140,14 +126,14 @@ operators that will enable you to perform queries that are slightly more interes
 
 Implement the skeleton methods in:
 
-***  
+***
 
 * src/java/simpledb/execution/Predicate.java
 * src/java/simpledb/execution/JoinPredicate.java
 * src/java/simpledb/execution/Filter.java
 * src/java/simpledb/execution/Join.java
 
-***  
+***
 
 At this point, your code should pass the unit tests in PredicateTest, JoinPredicateTest, FilterTest, and JoinTest.
 Furthermore, you should be able to pass the system tests FilterTest and JoinTest.
@@ -159,13 +145,10 @@ An additional SimpleDB operator implements basic SQL aggregates with a
 (`COUNT`, `SUM`, `AVG`, `MIN`,
 `MAX`) and support grouping. You only need to support aggregates over a single field, and grouping by a single field.
 
-In order to calculate aggregates, we use an `Aggregator`
-interface which merges a new tuple into the existing calculation of an aggregate. The `Aggregator` is told during
-construction what operation it should use for aggregation. Subsequently, the client code should
+In order to calculate aggregates, we use an `Aggregator` interface which merges a new tuple into the existing calculation of an aggregate. The `Aggregator` is told during construction what operation it should use for aggregation. Subsequently, the client code should
 call `Aggregator.mergeTupleIntoGroup()` for every tuple in the child iterator. After all tuples have been merged, the
 client can retrieve a OpIterator of aggregation results. Each tuple in the result is a pair of the
-form `(groupValue, aggregateValue)`, unless the value of the group by field was `Aggregator.NO_GROUPING`, in which case
-the result is a single tuple of the form `(aggregateValue)`.
+form `(groupValue, aggregateValue)`, unless the value of the group by field was `Aggregator.NO_GROUPING`, in which case the result is a single tuple of the form `(aggregateValue)`.
 
 Note that this implementation requires space linear in the number of distinct groups. For the purposes of this lab, you
 do not need to worry about the situation where the number of groups exceeds available memory.
@@ -174,13 +157,13 @@ do not need to worry about the situation where the number of groups exceeds avai
 
 Implement the skeleton methods in:
 
-***  
+***
 
 * src/java/simpledb/execution/IntegerAggregator.java
 * src/java/simpledb/execution/StringAggregator.java
 * src/java/simpledb/execution/Aggregate.java
 
-***  
+***
 
 At this point, your code should pass the unit tests IntegerAggregatorTest, StringAggregatorTest, and AggregateTest.
 Furthermore, you should be able to pass the AggregateTest system test.
@@ -203,7 +186,7 @@ the physical file on disk. You will need to ensure that the RecordID in the tupl
 
 Implement the remaining skeleton methods in:
 
-***  
+***
 
 * src/java/simpledb/storage/HeapPage.java
 * src/java/simpledb/storage/HeapFile.java<br>
@@ -225,12 +208,12 @@ implementation of transactions in the next lab will not work properly.
 
 Implement the following skeleton methods in <tt>src/simpledb/BufferPool.java</tt>:
 
-***  
+***
 
 * insertTuple()
 * deleteTuple()
 
-***  
+***
 
 
 These methods should call the appropriate methods in the HeapFile that belong to the table being modified (this extra
@@ -259,12 +242,12 @@ returning a single tuple with one integer field, containing the count.
 
 Implement the skeleton methods in:
 
-***  
+***
 
 * src/java/simpledb/execution/Insert.java
 * src/java/simpledb/execution/Delete.java
 
-***  
+***
 
 At this point, your code should pass the unit tests in InsertTest. We have not provided unit tests for `Delete`.
 Furthermore, you should be able to pass the InsertTest and DeleteTest system tests.
@@ -296,7 +279,7 @@ page it evicts.
 
 Fill in the `flushPage()` method and additional helper methods to implement page eviction in:
 
-***  
+***
 
 * src/java/simpledb/storage/BufferPool.java
 

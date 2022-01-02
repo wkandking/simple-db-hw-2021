@@ -10,6 +10,9 @@ public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
 
+    private int gbfield;
+    private int gbfielstype;
+
     /**
      * Aggregate constructor
      * 
