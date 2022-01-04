@@ -1,7 +1,10 @@
 package simpledb.execution;
 
 import simpledb.common.Type;
-import simpledb.storage.Tuple;
+import simpledb.storage.*;
+
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Knows how to compute some aggregate over a set of StringFields.
@@ -9,6 +12,13 @@ import simpledb.storage.Tuple;
 public class StringAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+
+    private int gbfield;
+    private Type gbfieldtype;
+    private int afield;
+    private Op what;
+    private ConcurrentHashMap<Field, Integer> groupValue;
+    private TupleDesc td;
 
     /**
      * Aggregate constructor
@@ -21,6 +31,14 @@ public class StringAggregator implements Aggregator {
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
+        this.gbfield = gbfield;
+        this.gbfieldtype = gbfieldtype;
+        this.afield = afield;
+        this.what = what;
+        groupValue = new ConcurrentHashMap<>();
+        td = gbfield != NO_GROUPING ? new TupleDesc(new Type[]{gbfieldtype, Type.INT_TYPE},
+                new String[]{"groupValue","aggregateValue"}) :
+                new TupleDesc(new Type[]{Type.INT_TYPE}, new String[]{"aggregateValue"});
     }
 
     /**
@@ -29,6 +47,12 @@ public class StringAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
+        Field groupField = gbfield == NO_GROUPING ? null :  tup.getField(gbfield);
+        if(groupField != null && gbfieldtype.equals(groupField.getType())){
+            if(what.equals(Op.COUNT)){
+                groupValue.put(groupField, groupValue.getOrDefault(groupField, 0) + 1);
+            }
+        }
     }
 
     /**
@@ -41,7 +65,22 @@ public class StringAggregator implements Aggregator {
      */
     public OpIterator iterator() {
         // some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        ArrayList<Tuple> tuples = new ArrayList<>();
+        if(gbfield == NO_GROUPING){
+            for(Field key : groupValue.keySet()){
+                Tuple tuple = new Tuple(td);
+                tuple.setField(0, new IntField(groupValue.get(key)));
+                tuples.add(tuple);
+            }
+        }else{
+            for(Field key : groupValue.keySet()){
+                Tuple tuple = new Tuple(td);
+                tuple.setField(0, key);
+                tuple.setField(1, new IntField(groupValue.get(key)));
+                tuples.add(tuple);
+            }
+        }
+        return new TupleIterator(td, tuples);
     }
 
 }

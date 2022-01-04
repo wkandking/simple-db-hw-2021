@@ -3,12 +3,13 @@ package simpledb.storage;
 import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
 import java.io.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -154,6 +155,12 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> dirtyPages = file.insertTuple(tid, t);
+        for(Page page : dirtyPages){
+            page.markDirty(true, tid);
+            bufferPool.put(page.getId(), page);
+        }
     }
 
     /**
@@ -173,6 +180,13 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
+        for(Page page : dirtyPages){
+            page.markDirty(true, tid);
+            bufferPool.put(page.getId(), page);
+        }
+
     }
 
     /**
