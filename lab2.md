@@ -253,19 +253,16 @@ Furthermore, you should be able to pass the InsertTest and DeleteTest system tes
 ### 2.5. Page eviction
 
 In Lab 1, we did not correctly observe the limit on the maximum number of pages in the buffer pool defined by the
-constructor argument `numPages`. Now, you will choose a page eviction policy and instrument any previous code that reads
-or creates pages to implement your policy.
+constructor argument `numPages`. Now, you will choose a page eviction policy and instrument any previous code that reads or creates pages to implement your policy.
 
 When more than <tt>numPages</tt> pages are in the buffer pool, one page should be evicted from the pool before the next
 is loaded. The choice of eviction policy is up to you; it is not necessary to do something sophisticated. Describe your
 policy in the lab writeup.
 
-Notice that `BufferPool` asks you to implement a `flushAllPages()` method. This is not something you would ever need in
-a real implementation of a buffer pool. However, we need this method for testing purposes. You should never call this
+Notice that `BufferPool` asks you to implement a `flushAllPages()` method. This is not something you would ever need in a real implementation of a buffer pool. However, we need this method for testing purposes. You should never call this
 method from any real code.
 
-Because of the way we have implemented ScanTest.cacheTest, you will need to ensure that your flushPage and flushAllPages
-methods do no evict pages from the buffer pool to properly pass this test.
+Because of the way we have implemented ScanTest.cacheTest, you will need to ensure that your flushPage and flushAllPages methods do no evict pages from the buffer pool to properly pass this test.
 
 flushAllPages should call flushPage on all pages in the BufferPool, and flushPage should write any dirty page to disk
 and mark it as not dirty, while leaving it in the BufferPool.
@@ -285,10 +282,7 @@ Fill in the `flushPage()` method and additional helper methods to implement page
 
 
 
-If you did not implement `writePage()` in
-<tt>HeapFile.java</tt> above, you will also need to do that here. Finally, you should also implement `discardPage()` to
-remove a page from the buffer pool *without* flushing it to disk. We will not test `discardPage()`
-in this lab, but it will be necessary for future labs.
+If you did not implement `writePage()` in <tt>HeapFile.java</tt> above, you will also need to do that here. Finally, you should also implement `discardPage()` to remove a page from the buffer pool *without* flushing it to disk. We will not test `discardPage()` in this lab, but it will be necessary for future labs.
 
 At this point, your code should pass the EvictionTest system test.
 
