@@ -215,7 +215,6 @@ Implement the following skeleton methods in <tt>src/simpledb/BufferPool.java</tt
 
 ***
 
-
 These methods should call the appropriate methods in the HeapFile that belong to the table being modified (this extra
 level of indirection is needed to support other types of files &mdash; like indices &mdash; in the future).
 
@@ -225,8 +224,7 @@ BufferPoolWriteTest.
 ### 2.4. Insertion and deletion
 
 Now that you have written all of the HeapFile machinery to add and remove tuples, you will implement the `Insert`
-and `Delete`
-operators.
+and `Delete`operators.
 
 For plans that implement `insert` and `delete` queries, the top-most operator is a special `Insert` or `Delete`
 operator that modifies the pages on disk. These operators return the number of affected tuples. This is implemented by
