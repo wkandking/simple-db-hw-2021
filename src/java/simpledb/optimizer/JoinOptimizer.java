@@ -124,13 +124,15 @@ public class JoinOptimizer {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
             // You do not need to implement proper support for these for Lab 3.
+
             return card1 + cost1 + cost2;
         } else {
             // Insert your code here.
             // HINT: You may need to use the variable "j" if you implemented
             // a join algorithm that's more complicated than a basic
             // nested-loops join.
-            return -1.0;
+
+            return cost1 + card1 * cost2 + card1 * card2;
         }
     }
 
@@ -176,6 +178,16 @@ public class JoinOptimizer {
                                                    Map<String, Integer> tableAliasToId) {
         int card = 1;
         // some code goes here
+        if(joinOp.equals(Predicate.Op.EQUALS)){
+            if(t1pkey || t2pkey){
+                card = Math.min(card1, card2);
+            }else{
+                card = Math.max(card1, card2);
+            }
+        }else{
+            card = (int) (card1 * card2 * 0.3);
+        }
+
         return card <= 0 ? 1 : card;
     }
 
