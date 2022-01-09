@@ -1,7 +1,6 @@
 package simpledb.common;
 
-import javafx.scene.control.Tab;
-import simpledb.common.Type;
+
 import simpledb.storage.DbFile;
 import simpledb.storage.HeapFile;
 import simpledb.storage.TupleDesc;
