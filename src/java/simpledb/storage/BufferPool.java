@@ -35,6 +35,13 @@ public class BufferPool {
             pageId = _pageId;
             page = _page;
         }
+        public Page getPage() {
+            return page;
+        }
+
+        public void setPage(Page page) {
+            this.page = page;
+        }
     }
     /** Bytes per page, including header. */
     private static final int DEFAULT_PAGE_SIZE = 4096;
@@ -281,11 +288,13 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-        Page page = bufferPool.get(pid).page;
+        ListNode listNode = bufferPool.get(pid);
+        Page page = listNode.page;
         HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
         file.writePage(page);
-        page.markDirty(false, new TransactionId());
-        bufferPool.put(pid, new ListNode(pid, page));
+        page.markDirty(false, null);
+        listNode.setPage(page);
+        bufferPool.put(pid, listNode);
     }
 
     /** Write all pages of the specified transaction to disk.
