@@ -54,7 +54,7 @@ public class RecordId implements Serializable {
     public boolean equals(Object o) {
         // some code goes here
         if(o instanceof RecordId){
-            if(this.pid == ((RecordId) o).pid && this.tupleno == ((RecordId) o).tupleno){
+            if(this.pid.equals(((RecordId) o).pid) && this.tupleno == ((RecordId) o).tupleno){
                 return true;
             }
         }

@@ -124,13 +124,15 @@ public class JoinOptimizer {
         if (j instanceof LogicalSubplanJoinNode) {
             // A LogicalSubplanJoinNode represents a subquery.
             // You do not need to implement proper support for these for Lab 3.
+
             return card1 + cost1 + cost2;
         } else {
             // Insert your code here.
             // HINT: You may need to use the variable "j" if you implemented
             // a join algorithm that's more complicated than a basic
             // nested-loops join.
-            return -1.0;
+
+            return cost1 + card1 * cost2 + card1 * card2;
         }
     }
 
@@ -176,6 +178,16 @@ public class JoinOptimizer {
                                                    Map<String, Integer> tableAliasToId) {
         int card = 1;
         // some code goes here
+        if(joinOp.equals(Predicate.Op.EQUALS)){
+            if(t1pkey || t2pkey){
+                card = Math.min(card1, card2);
+            }else{
+                card = Math.max(card1, card2);
+            }
+        }else{
+            card = (int) (card1 * card2 * 0.3);
+        }
+
         return card <= 0 ? 1 : card;
     }
 
@@ -238,7 +250,30 @@ public class JoinOptimizer {
 
         // some code goes here
         //Replace the following
-        return joins;
+        PlanCache pc = new PlanCache();
+        List<LogicalJoinNode> j = joins;
+        int jSize = j.size();
+        Set<LogicalJoinNode> wholeSet = null;
+        for(int i = 1; i <= jSize; i++){
+            Set<Set<LogicalJoinNode>> sets = enumerateSubsets(j, i);
+            for(Set<LogicalJoinNode> s : sets){
+                if(s.size() == jSize)
+                    wholeSet = s;
+                CostCard bestPlan = new CostCard();
+                double bestPlanCost = Double.MAX_VALUE;
+                for(LogicalJoinNode node : s){
+                    CostCard costCard = computeCostAndCardOfSubplan(stats, filterSelectivities, node, s, bestPlanCost, pc);
+                    if(costCard != null && costCard.cost < bestPlanCost){
+                        bestPlan = costCard;
+                        bestPlanCost = costCard.cost;
+                    }
+                }
+                if (bestPlan.plan != null) {
+                    pc.addPlan(s, bestPlan.cost, bestPlan.card, bestPlan.plan);
+                }
+            }
+        }
+        return pc.getOrder(wholeSet);
     }
 
     // ===================== Private Methods =================================
