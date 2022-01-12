@@ -12,6 +12,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -118,7 +119,15 @@ public class BufferPool {
         }else{
             lockType = 1;
         }
+        final long start = System.currentTimeMillis();
+        long timeout = new Random().nextInt(2000) + 1000;
         while(true){
+            final long cur = System.currentTimeMillis();
+            if(cur - start > timeout){
+                transactionComplete(tid, false);
+                throw new TransactionAbortedException();
+            }
+
             if(lockManager.acquireLock(tid, pid, lockType)){
                 break;
             }

@@ -75,9 +75,8 @@ public class LockManager {
             }else{
                 if(lockType == 0){
                     LockStatus lock = new LockStatus(tid, lockType);
-                    Vector<LockStatus> pageLocks = new Vector<>();
-                    pageLocks.add(lock);
-                    pagesLocks.put(pid, pageLocks);
+                    pageLockStatuses.add(lock);
+                    pagesLocks.put(pid, pageLockStatuses);
                     return true;
                 }else{
                     return false;
@@ -94,8 +93,8 @@ public class LockManager {
                 if(lockStatuses.size() == 0){
                     pagesLocks.remove(pid);
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
