@@ -3,6 +3,7 @@ package simpledb.storage;
 import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.DbException;
+import simpledb.transaction.LockManager;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -57,6 +58,8 @@ public class BufferPool {
 
     private ConcurrentHashMap<PageId, ListNode> bufferPool;
 
+    private LockManager lockManager;
+
     /** 定义双向循环链表的头和尾，方便后续操作 **/
     private ListNode head;
     private ListNode last;
@@ -70,6 +73,7 @@ public class BufferPool {
         // some code goes here
         this.numPages = numPages;
         bufferPool = new ConcurrentHashMap<>();
+        lockManager = new LockManager();
         head = new ListNode();
         last = new ListNode();
         head.next = last;
@@ -107,7 +111,18 @@ public class BufferPool {
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
-        // some code goes here
+        // some code goes
+        int lockType;
+        if(perm.equals(Permissions.READ_ONLY)){
+            lockType = 0;
+        }else{
+            lockType = 1;
+        }
+        while(true){
+            if(lockManager.acquireLock(tid, pid, lockType)){
+                break;
+            }
+        }
         if(bufferPool.containsKey(pid)){
             ListNode node = bufferPool.get(pid);
             moveNodeToHead(node);
@@ -164,7 +179,8 @@ public class BufferPool {
      */
     public  void unsafeReleasePage(TransactionId tid, PageId pid) {
         // some code goes here
-        // not necessary for lab1|lab2
+        // not necessary for lab1|
+        lockManager.releaseLock(tid, pid);
     }
 
     /**
@@ -181,7 +197,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lockManager.hasLock(tid, p);
     }
 
     /**

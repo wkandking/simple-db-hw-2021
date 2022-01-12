@@ -123,6 +123,9 @@ public class HeapFile implements DbFile {
         HeapPage page = null;
         for(int i = 0; i < numPages(); i++){
             HeapPage temp = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), Permissions.READ_WRITE);
+            if(temp.getNumEmptySlots() == 0){
+                Database.getBufferPool().unsafeReleasePage(tid, temp.getId());
+            }
             if(temp.getNumEmptySlots() > 0){
                 page = temp;
                 break;
