@@ -131,9 +131,7 @@ public class BufferPool {
             Page page = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
             ListNode node = new ListNode(pid, page);
             if(bufferPool.size() == numPages){
-                ListNode removeNode = last.pre;
                 evictPage();
-                bufferPool.remove(removeNode.pageId);
             }
             insertHeadNode(node);
             bufferPool.put(pid, node);
@@ -158,6 +156,18 @@ public class BufferPool {
             head.next.pre = node;
             head.next = node;
             node.pre = head;
+        }
+    }
+    private void moveNodeToLast(ListNode node){
+        ListNode a = node.pre;
+        ListNode b = node.next;
+        if(b != last){
+            a.next = b;
+            b.pre = a;
+            node.pre = last.pre;
+            last.pre.next = node;
+            node.next = last;
+            last.pre = node;
         }
     }
     private ListNode deleteLastNode() {
@@ -191,6 +201,7 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) {
         // some code goes here
         // not necessary for lab1|lab2
+        this.transactionComplete(tid, true);
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
@@ -210,6 +221,31 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid, boolean commit) {
         // some code goes here
         // not necessary for lab1|lab2
+        if(commit){
+            try {
+                flushPages(tid);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else{
+            restorePage(tid);
+        }
+        for(PageId pid : bufferPool.keySet()){
+            if(lockManager.hasLock(tid, pid)){
+                unsafeReleasePage(tid, pid);
+            }
+        }
+    }
+    public synchronized void restorePage(TransactionId tid){
+        for(PageId pid :bufferPool.keySet()){
+            ListNode node = bufferPool.get(pid);
+            Page page = node.getPage();
+            if(page.isDirty() == tid){
+                Page temp = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+                node.setPage(temp);
+                bufferPool.put(pid, node);
+            }
+        }
     }
 
     /**
@@ -235,9 +271,11 @@ public class BufferPool {
         List<Page> dirtyPages = file.insertTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = new ListNode(page.getId(), page);
+            ListNode node = bufferPool.get(page.getId());
+            node.setPage(page);
+            bufferPool.put(page.getId(), node);
             insertHeadNode(node);
-            bufferPool.put(page.getId(),node);
+
         }
     }
 
@@ -262,9 +300,10 @@ public class BufferPool {
         ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = new ListNode(page.getId(), page);
+            ListNode node = bufferPool.get(page.getId());
+            node.setPage(page);
+            bufferPool.put(page.getId(), node);
             insertHeadNode(node);
-            bufferPool.put(page.getId(),node);
         }
 
     }
@@ -318,6 +357,12 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        for (PageId pageId : bufferPool.keySet()){
+            Page page = bufferPool.get(pageId).getPage();
+            if(page.isDirty() == tid){
+                flushPage(pageId);
+            }
+        }
     }
 
     /**
@@ -326,14 +371,24 @@ public class BufferPool {
      */
     private synchronized  void evictPage() throws DbException {
         // some code goes here
-        // not necessary for lab1
-        ListNode node = deleteLastNode();
-        try {
-            flushPage(node.pageId);
-        }catch (IOException e){
-            e.printStackTrace();
+        // not necessary for
+        ListNode removeNode = last.pre;
+        while(removeNode != head){
+            if(removeNode.page.isDirty() != null){
+                removeNode = removeNode.pre;
+            }else{
+                moveNodeToLast(removeNode);
+                deleteLastNode();
+                try {
+                    flushPage(removeNode.pageId);
+                    discardPage(removeNode.pageId);
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-        bufferPool.remove(node.pageId);
+        throw new DbException("都是脏页");
     }
 
 

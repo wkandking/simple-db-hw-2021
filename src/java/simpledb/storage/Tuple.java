@@ -99,12 +99,12 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-        String res = "";
-        for(int i = 0; i < fields.length - 1; i++){
-            res += (fields[i].toString() + "\t");
+        StringBuffer buffer = new StringBuffer();
+        for (Field f : this.fields) {
+            buffer.append(f.toString());
+            buffer.append('\t');
         }
-        res += fields[fields.length - 1];
-        return res;
+        return buffer.toString();
     }
 
     /**
