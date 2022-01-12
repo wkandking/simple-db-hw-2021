@@ -3,6 +3,7 @@ package simpledb.storage;
 import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.DbException;
+import simpledb.transaction.LockManager;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -11,6 +12,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -57,6 +59,8 @@ public class BufferPool {
 
     private ConcurrentHashMap<PageId, ListNode> bufferPool;
 
+    private LockManager lockManager;
+
     /** 定义双向循环链表的头和尾，方便后续操作 **/
     private ListNode head;
     private ListNode last;
@@ -70,6 +74,7 @@ public class BufferPool {
         // some code goes here
         this.numPages = numPages;
         bufferPool = new ConcurrentHashMap<>();
+        lockManager = new LockManager();
         head = new ListNode();
         last = new ListNode();
         head.next = last;
@@ -107,7 +112,26 @@ public class BufferPool {
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
-        // some code goes here
+        // some code goes
+        int lockType;
+        if(perm.equals(Permissions.READ_ONLY)){
+            lockType = 0;
+        }else{
+            lockType = 1;
+        }
+        final long start = System.currentTimeMillis();
+        long timeout = new Random().nextInt(2000) + 1000;
+        while(true){
+            final long cur = System.currentTimeMillis();
+            if(cur - start > timeout){
+                transactionComplete(tid, false);
+                throw new TransactionAbortedException();
+            }
+
+            if(lockManager.acquireLock(tid, pid, lockType)){
+                break;
+            }
+        }
         if(bufferPool.containsKey(pid)){
             ListNode node = bufferPool.get(pid);
             moveNodeToHead(node);
@@ -116,9 +140,7 @@ public class BufferPool {
             Page page = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
             ListNode node = new ListNode(pid, page);
             if(bufferPool.size() == numPages){
-                ListNode removeNode = last.pre;
                 evictPage();
-                bufferPool.remove(removeNode.pageId);
             }
             insertHeadNode(node);
             bufferPool.put(pid, node);
@@ -145,6 +167,18 @@ public class BufferPool {
             node.pre = head;
         }
     }
+    private void moveNodeToLast(ListNode node){
+        ListNode a = node.pre;
+        ListNode b = node.next;
+        if(b != last){
+            a.next = b;
+            b.pre = a;
+            node.pre = last.pre;
+            last.pre.next = node;
+            node.next = last;
+            last.pre = node;
+        }
+    }
     private ListNode deleteLastNode() {
         ListNode node = last.pre;
         ListNode a = node.pre;
@@ -164,7 +198,8 @@ public class BufferPool {
      */
     public  void unsafeReleasePage(TransactionId tid, PageId pid) {
         // some code goes here
-        // not necessary for lab1|lab2
+        // not necessary for lab1|
+        lockManager.releaseLock(tid, pid);
     }
 
     /**
@@ -175,13 +210,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) {
         // some code goes here
         // not necessary for lab1|lab2
+        this.transactionComplete(tid, true);
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lockManager.hasLock(tid, p);
     }
 
     /**
@@ -194,6 +230,31 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid, boolean commit) {
         // some code goes here
         // not necessary for lab1|lab2
+        if(commit){
+            try {
+                flushPages(tid);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else{
+            restorePage(tid);
+        }
+        for(PageId pid : bufferPool.keySet()){
+            if(lockManager.hasLock(tid, pid)){
+                unsafeReleasePage(tid, pid);
+            }
+        }
+    }
+    public synchronized void restorePage(TransactionId tid){
+        for(PageId pid :bufferPool.keySet()){
+            ListNode node = bufferPool.get(pid);
+            Page page = node.getPage();
+            if(page.isDirty() == tid){
+                Page temp = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+                node.setPage(temp);
+                bufferPool.put(pid, node);
+            }
+        }
     }
 
     /**
@@ -219,9 +280,11 @@ public class BufferPool {
         List<Page> dirtyPages = file.insertTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = new ListNode(page.getId(), page);
+            ListNode node = bufferPool.get(page.getId());
+            node.setPage(page);
+            bufferPool.put(page.getId(), node);
             insertHeadNode(node);
-            bufferPool.put(page.getId(),node);
+
         }
     }
 
@@ -246,9 +309,10 @@ public class BufferPool {
         ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = new ListNode(page.getId(), page);
+            ListNode node = bufferPool.get(page.getId());
+            node.setPage(page);
+            bufferPool.put(page.getId(), node);
             insertHeadNode(node);
-            bufferPool.put(page.getId(),node);
         }
 
     }
@@ -302,6 +366,12 @@ public class BufferPool {
     public synchronized  void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        for (PageId pageId : bufferPool.keySet()){
+            Page page = bufferPool.get(pageId).getPage();
+            if(page.isDirty() == tid){
+                flushPage(pageId);
+            }
+        }
     }
 
     /**
@@ -310,14 +380,24 @@ public class BufferPool {
      */
     private synchronized  void evictPage() throws DbException {
         // some code goes here
-        // not necessary for lab1
-        ListNode node = deleteLastNode();
-        try {
-            flushPage(node.pageId);
-        }catch (IOException e){
-            e.printStackTrace();
+        // not necessary for
+        ListNode removeNode = last.pre;
+        while(removeNode != head){
+            if(removeNode.page.isDirty() != null){
+                removeNode = removeNode.pre;
+            }else{
+                moveNodeToLast(removeNode);
+                deleteLastNode();
+                try {
+                    flushPage(removeNode.pageId);
+                    discardPage(removeNode.pageId);
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-        bufferPool.remove(node.pageId);
+        throw new DbException("都是脏页");
     }
 
 

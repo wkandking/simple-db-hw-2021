@@ -122,8 +122,11 @@ public class HeapFile implements DbFile {
         ArrayList<Page> modifiedPages = new ArrayList<>(numPages());
         HeapPage page = null;
         for(int i = 0; i < numPages(); i++){
-            HeapPage temp = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), Permissions.READ_WRITE);
-            if(temp.getNumEmptySlots() > 0){
+            HeapPageId pid = new HeapPageId(getId(), i);
+            HeapPage temp = (HeapPage)Database.getBufferPool().getPage(tid, pid, Permissions.READ_WRITE);
+            if(temp.getNumEmptySlots() == 0){
+                Database.getBufferPool().unsafeReleasePage(tid, pid);
+            }else{
                 page = temp;
                 break;
             }
