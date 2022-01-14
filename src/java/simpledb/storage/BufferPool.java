@@ -276,11 +276,11 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
+        DbFile file = Database.getCatalog().getDatabaseFile(tableId);
         List<Page> dirtyPages = file.insertTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = bufferPool.get(page.getId());
+            ListNode node = bufferPool.getOrDefault(page.getId(), new ListNode(page.getId(), page));
             node.setPage(page);
             bufferPool.put(page.getId(), node);
             insertHeadNode(node);
@@ -309,7 +309,7 @@ public class BufferPool {
         ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
-            ListNode node = bufferPool.get(page.getId());
+            ListNode node = bufferPool.getOrDefault(page.getId(), new ListNode(page.getId(), page));
             node.setPage(page);
             bufferPool.put(page.getId(), node);
             insertHeadNode(node);
@@ -354,7 +354,7 @@ public class BufferPool {
         // not necessary for lab1
         ListNode listNode = bufferPool.get(pid);
         Page page = listNode.page;
-        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
+        DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
         file.writePage(page);
         page.markDirty(false, null);
         listNode.setPage(page);
