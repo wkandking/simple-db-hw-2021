@@ -305,8 +305,8 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HeapFile file = (HeapFile) Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
-        ArrayList<Page> dirtyPages = file.deleteTuple(tid, t);
+        DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        List<Page> dirtyPages = file.deleteTuple(tid, t);
         for(Page page : dirtyPages){
             page.markDirty(true, tid);
             ListNode node = bufferPool.getOrDefault(page.getId(), new ListNode(page.getId(), page));
@@ -352,13 +352,15 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
-        ListNode listNode = bufferPool.get(pid);
-        Page page = listNode.page;
-        DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
-        file.writePage(page);
-        page.markDirty(false, null);
-        listNode.setPage(page);
-        bufferPool.put(pid, listNode);
+        if(bufferPool.containsKey(pid)){
+            ListNode listNode = bufferPool.get(pid);
+            Page page = listNode.page;
+            DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+            file.writePage(page);
+            page.markDirty(false, null);
+            listNode.setPage(page);
+            bufferPool.put(pid, listNode);
+        }
     }
 
     /** Write all pages of the specified transaction to disk.
