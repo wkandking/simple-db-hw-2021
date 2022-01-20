@@ -5,7 +5,9 @@ import simpledb.storage.PageId;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LockManager {
     class LockStatus{
@@ -36,7 +38,7 @@ public class LockManager {
     private volatile Map<PageId, Vector<LockStatus>> pagesLocks;
 
     public LockManager() {
-        pagesLocks = new HashMap<>();
+        pagesLocks = new ConcurrentHashMap<>();
     }
     public synchronized boolean acquireLock(TransactionId tid, PageId pid, int lockType){
         if(!pagesLocks.containsKey(pid) || pagesLocks.get(pid).size() == 0){ // 无锁上锁
@@ -70,7 +72,7 @@ public class LockManager {
                 }
             }
             // 如果没有当前事务的锁
-            if(pageStatus == 1){// 说明有事务在Page上加了X锁
+            if(pageLockStatuses.get(0).lockType == 1){// 说明有事务在Page上加了X锁
                 return false;
             }else{
                 if(lockType == 0){
@@ -109,5 +111,14 @@ public class LockManager {
             }
         }
         return false;
+    }
+
+    public synchronized void completeTransaction(TransactionId tid) {
+        for (PageId pageId : pagesLocks.keySet()) {
+            if(hasLock(tid, pageId)){
+                releaseLock(tid, pageId);
+            }
+
+        }
     }
 }

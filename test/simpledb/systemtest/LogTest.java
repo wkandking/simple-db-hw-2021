@@ -298,6 +298,7 @@ public class LogTest extends SimpleDbTestBase {
         Transaction t = new Transaction();
         t.start();
         look(hf1, t, 1, true);
+        look(hf1, t, 2, true);
         look(hf1, t, 5, true);
         look(hf1, t, 6, false);
         look(hf1, t, 7, true);

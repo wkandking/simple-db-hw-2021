@@ -184,7 +184,7 @@ public class HeapFile implements DbFile {
 
         public Iterator<Tuple> getTupleItertor(int curPage) throws TransactionAbortedException, DbException {
             if(curPage >= 0 && curPage < numPages()){
-                HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid,new HeapPageId(getId(), curPage),Permissions.READ_ONLY);
+                HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid,new HeapPageId(getId(), curPage),Permissions.READ_WRITE);
                 return page.iterator();
             }
             throw new DbException("没有curPage 对应的 iterator ***** from HeapFileIterator.getTupleIterator()");

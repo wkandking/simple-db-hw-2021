@@ -460,6 +460,33 @@ public class LogFile {
             synchronized(this) {
                 preAppend();
                 // some code goes here
+                Long offset = tidToFirstLogRecord.get(tid.getId());
+                raf.seek(offset);
+                while(true){
+                    try{
+                        int type = raf.readInt();
+                        long transactionId = raf.readLong();
+                        if(type == UPDATE_RECORD){
+                            Page beforeImage = readPageData(raf);
+                            Page afterImage = readPageData(raf);
+                            PageId beforeImageId = beforeImage.getId();
+                            if(transactionId == tid.getId()){
+                                Database.getBufferPool().discardPage(beforeImageId);
+                                Database.getCatalog().getDatabaseFile(beforeImageId.getTableId()).writePage(beforeImage);
+                            }
+                        }else if(type == CHECKPOINT_RECORD){
+                            int transctionNums = raf.readInt();
+                            for(int i = 0; i < transctionNums; i++){
+                                long transactionTempId = raf.readLong();
+                                long offsetTemp = raf.readLong();
+                            }
+                        }
+                        raf.readLong();
+                    }catch (EOFException e){
+                        break;
+                    }
+                }
+
             }
         }
     }
@@ -477,7 +504,6 @@ public class LogFile {
             e.printStackTrace();
         }
     }
-
     /** Recover the database system by ensuring that the updates of
         committed transactions are installed and that the
         updates of uncommitted transactions are not installed.
@@ -487,6 +513,65 @@ public class LogFile {
             synchronized (this) {
                 recoveryUndecided = false;
                 // some code goes here
+                raf.seek(0);
+                long lastCheckPointOffset = raf.readLong();
+                if(lastCheckPointOffset != -1){
+
+                }
+                Map<Long, List<Page>> beforeImages = new HashMap<>();
+                Map<Long, List<Page>> afterImages = new HashMap<>();
+                Set<Long> commitTransactionIds = new HashSet<>();
+                Set<Long> abortTransactionIds = new HashSet<>();
+                while(true){
+                    try{
+                        int type = raf.readInt();
+                        long transactionId = raf.readLong();
+                        if(type == UPDATE_RECORD){
+                            Page beforeImage = readPageData(raf);
+                            Page afterImage = readPageData(raf);
+                            List<Page> before = beforeImages.getOrDefault(transactionId, new ArrayList<>());
+                            List<Page> after = afterImages.getOrDefault(transactionId, new ArrayList<>());
+                            before.add(beforeImage);
+                            after.add(afterImage);
+                            beforeImages.put(transactionId, before);
+                            afterImages.put(transactionId, after);
+                        }else if(type == COMMIT_RECORD){
+                            commitTransactionIds.add(transactionId);
+                        }else if(type == CHECKPOINT_RECORD){
+                            int transanctionNums = raf.readInt();
+                            for(int i= 0; i < transanctionNums; i++){
+                                raf.readLong();
+                                raf.readLong();
+                            }
+                        }else if(type == ABORT_RECORD){
+                            abortTransactionIds.add(transactionId);
+                        }
+                    }catch (EOFException e){
+                        break;
+                    }
+                    raf.readLong();
+                }
+
+                for(Long tid : beforeImages.keySet()){
+                    if(abortTransactionIds.contains(tid)){
+                        List<Page> before = beforeImages.get(tid);
+                        for(Page page : before){
+                            Database.getCatalog().getDatabaseFile(page.getId().getTableId()).writePage(page);
+                        }
+                    }
+                }
+                for(Long tid : commitTransactionIds){
+                    if(afterImages.containsKey(tid)){
+                        List<Page> after = afterImages.get(tid);
+                        for(Page page : after){
+                            Database.getCatalog().getDatabaseFile(page.getId().getTableId()).writePage(page);
+                        }
+
+                    }
+                }
+
+
+
             }
          }
     }

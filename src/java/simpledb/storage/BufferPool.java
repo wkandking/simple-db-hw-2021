@@ -4,6 +4,7 @@ import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.DbException;
 import simpledb.transaction.LockManager;
+import simpledb.transaction.Transaction;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -120,7 +121,7 @@ public class BufferPool {
             lockType = 1;
         }
         final long start = System.currentTimeMillis();
-        long timeout = new Random().nextInt(2000) + 1000;
+        long timeout = 5000;
         while(true){
             final long cur = System.currentTimeMillis();
             if(cur - start > timeout){
@@ -232,18 +233,20 @@ public class BufferPool {
         // not necessary for lab1|lab2
         if(commit){
             try {
-                flushPages(tid);
+                for (PageId pageId : bufferPool.keySet()){
+                    Page page = bufferPool.get(pageId).getPage();
+                    if(page.isDirty()== tid){
+                        flushPage(pageId);
+                        page.setBeforeImage();
+                    }
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }else{
             restorePage(tid);
         }
-        for(PageId pid : bufferPool.keySet()){
-            if(lockManager.hasLock(tid, pid)){
-                unsafeReleasePage(tid, pid);
-            }
-        }
+        lockManager.completeTransaction(tid);
     }
     public synchronized void restorePage(TransactionId tid){
         for(PageId pid :bufferPool.keySet()){
@@ -352,10 +355,19 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+
         if(bufferPool.containsKey(pid)){
             ListNode listNode = bufferPool.get(pid);
             Page page = listNode.page;
-            DbFile file = Database.getCatalog().getDatabaseFile(pid.getTableId());
+            DbFile file = Database.getCatalog().getDatabaseFile(page.getId().getTableId());
+            // append an update record to the log, with
+            // a before-image and after-image.
+            TransactionId dirtier = page.isDirty();
+            if (dirtier != null){
+                Database.getLogFile().logWrite(dirtier,
+                        page.getBeforeImage(), page);
+                Database.getLogFile().force();
+            }
             file.writePage(page);
             page.markDirty(false, null);
             listNode.setPage(page);
@@ -370,8 +382,9 @@ public class BufferPool {
         // not necessary for lab1|lab2
         for (PageId pageId : bufferPool.keySet()){
             Page page = bufferPool.get(pageId).getPage();
-            if(page.isDirty() == tid){
+            if(page.isDirty()== tid){
                 flushPage(pageId);
+                page.setBeforeImage();
             }
         }
     }
