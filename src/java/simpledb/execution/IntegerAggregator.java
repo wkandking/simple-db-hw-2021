@@ -85,13 +85,7 @@ public class IntegerAggregator implements Aggregator {
                 groupValue.put(groupField, groupValue.getOrDefault(groupField, 0) + 1);
                 break;
             case AVG:
-                List<Integer> temp = null;
-                if(groupToAvg.containsKey(groupField)){
-                    temp = groupToAvg.get(groupField);
-                }else{
-                    temp = new ArrayList();
-                }
-//                List<Integer> temp= groupToAvg.getOrDefault(groupField, new ArrayList<>());
+                List<Integer> temp= groupToAvg.getOrDefault(groupField, new ArrayList<>());
                 temp.add(value);
                 int sum = 0;
                 for(int num : temp){

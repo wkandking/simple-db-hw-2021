@@ -461,13 +461,11 @@ page size_ bytes of actual page content. Each tuple requires _tuple size_ * 8 bi
 header. Thus, the number of tuples that can fit in a single page is:
 
 <p>
-
 `
 _tuples per page_ = floor((_page size_ * 8) / (_tuple size_ * 8 + 1))
 `
 
 <p>
-
 Where _tuple size_ is the size of a tuple in the page in bytes. The idea here is that each tuple requires one additional
 bit of storage in the header. We compute the number of bits in a page (by mulitplying page size by 8), and divide this
 quantity by the number of bits in a tuple (including this extra header bit) to get the number of tuples per page. The
