@@ -185,7 +185,7 @@ public class JoinOptimizer {
                 card = Math.max(card1, card2);
             }
         }else{
-            card = (int) (card1 * card2 * 0.3);
+            card = Math.max((int) (card1 * card2 * 0.3),Math.max(card1, card2));
         }
 
         return card <= 0 ? 1 : card;

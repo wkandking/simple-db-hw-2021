@@ -2,7 +2,6 @@ package simpledb.optimizer;
 
 import simpledb.execution.Predicate;
 
-import javax.print.DocFlavor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
